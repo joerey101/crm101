@@ -8,13 +8,22 @@ export async function addNoteAction(leadId: string, content: string) {
     const session = await auth();
     if (!session?.user?.id) return { error: 'Unauthorized' };
 
+    // Fetch user to ensure we have brandId
+    const { prisma } = await import('@/lib/prisma');
+    const user = await prisma.user.findFirst({
+        where: { email: session.user.email as string },
+        select: { id: true, brandId: true }
+    });
+
+    if (!user) return { error: 'User not found' };
+
     if (!content.trim()) return { error: 'Content is required' };
 
     try {
         await createActivity({
             leadId,
-            userId: session.user.id,
-            brandId: (session.user as any).brandId,
+            userId: user.id,
+            brandId: user.brandId,
             type: 'NOTE',
             body: content,
         });
@@ -31,16 +40,25 @@ export async function addTaskAction(leadId: string, title: string, dueDateStr: s
     const session = await auth();
     if (!session?.user?.id) return { error: 'Unauthorized' };
 
+    // Fetch user to ensure we have brandId
+    const { prisma } = await import('@/lib/prisma');
+    const user = await prisma.user.findFirst({
+        where: { email: session.user.email as string },
+        select: { id: true, brandId: true }
+    });
+
+    if (!user) return { error: 'User not found' };
+
     if (!title.trim()) return { error: 'Title is required' };
     if (!dueDateStr) return { error: 'Due date is required' };
 
     try {
         await createTask({
             leadId,
-            assignedToUserId: session.user.id,
+            assignedToUserId: user.id,
             title,
             dueAt: new Date(dueDateStr),
-            brandId: (session.user as any).brandId,
+            brandId: user.brandId,
         });
 
         revalidatePath(`/dashboard/leads/${leadId}`);
