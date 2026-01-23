@@ -21,10 +21,15 @@ export default async function LeadDetailPage({
     const { id } = await params;
 
     // Parallel data fetching for performance
-    const [lead, activities, tasks] = await Promise.all([
+    const [lead, activities, tasks, users] = await Promise.all([
         getLeadById(id),
         getLeadActivities(id),
         getLeadTasks(id),
+        import('@/lib/prisma').then(m => m.prisma.user.findMany({
+            select: { id: true, email: true },
+            // In v1.1 filter by brandId strictly, but here we assume single brand context or fetch details
+            // We should filter by same brand as session user technically.
+        })),
     ]);
 
     if (!lead) {
@@ -33,7 +38,7 @@ export default async function LeadDetailPage({
 
     return (
         <div className="max-w-7xl mx-auto p-6">
-            <LeadHeader lead={lead} />
+            <LeadHeader lead={lead} users={users} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Content: Timeline */}

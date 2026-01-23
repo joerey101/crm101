@@ -1,6 +1,7 @@
 import { Lead, Stage } from '@prisma/client';
+import LeadAssigner from './LeadAssigner';
 
-export default function LeadHeader({ lead }: { lead: Lead & { stage: Stage } }) {
+export default function LeadHeader({ lead, users }: { lead: Lead & { stage: Stage }, users: { id: string, email: string }[] }) {
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex justify-between items-start">
@@ -17,7 +18,7 @@ export default function LeadHeader({ lead }: { lead: Lead & { stage: Stage } }) 
                     <span className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
                         {lead.stage.name}
                     </span>
-                    {/* Placeholder for Edit/Delete actions in future */}
+                    <LeadAssigner leadId={lead.id} currentOwnerId={lead.ownerUserId} users={users} />
                 </div>
             </div>
 
