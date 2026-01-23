@@ -167,6 +167,8 @@ model Task {
   brandId          String       @map("brand_id")
   leadId           String       @map("lead_id")
   assignedToUserId String       @map("assigned_to_user_id")
+  title            String
+  description      String?
   dueAt            DateTime     @map("due_at")
   status           TaskStatus   @default(OPEN)
   priority         TaskPriority @default(MEDIUM)
