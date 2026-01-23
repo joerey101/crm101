@@ -37,7 +37,7 @@ export default function ActivityTimeline({
                         name="content"
                         rows={3}
                         placeholder="Log a call, note, or meeting..."
-                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border"
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border text-gray-900"
                         required
                     />
                     <div className="mt-2 flex justify-end">
