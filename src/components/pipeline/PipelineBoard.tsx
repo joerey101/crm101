@@ -1,99 +1,123 @@
 'use client';
 
-import { Lead, Stage, Source } from '@prisma/client';
-import { updateLeadStageAction } from '@/app/actions/lead-actions';
-import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useState } from 'react';
+import {
+    DndContext,
+    DragOverlay,
+    closestCorners,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragStartEvent,
+    DragOverEvent,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { StageColumn } from './StageColumn';
+import { LeadCard } from './LeadCard';
+import { moveLeadAction } from '@/app/actions/pipeline-actions';
 
-type LeadWithRelations = Lead & {
-    source: Source;
-    owner: { email: string; id: string } | null;
-};
+interface PipelineBoardProps {
+    stages: any[];
+}
 
-type StageWithLeads = Stage & {
-    leads: LeadWithRelations[];
-};
+export default function PipelineBoard({ stages: initialStages }: PipelineBoardProps) {
+    const [stages, setStages] = useState(initialStages);
+    const [activeLead, setActiveLead] = useState<any | null>(null);
 
-export default function PipelineBoard({ stages }: { stages: StageWithLeads[] }) {
-    const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // Requires 5px move to prevent accidental drags
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
-    const handleDragStart = (e: React.DragEvent, leadId: string) => {
-        e.dataTransfer.setData('leadId', leadId);
+    // Helpers
+    const findStage = (id: string) => {
+        return stages.find(s => s.id === id) || stages.find(s => s.leads.some((l: any) => l.id === id));
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
+    function onDragStart(event: DragStartEvent) {
+        const { active } = event;
+        if (active.data.current?.type === 'Lead') {
+            setActiveLead(active.data.current.lead);
+        }
+    }
 
-    const handleDrop = (e: React.DragEvent, stageId: string) => {
-        e.preventDefault();
-        const leadId = e.dataTransfer.getData('leadId');
-        if (!leadId) return;
+    function onDragOver(event: DragOverEvent) {
+        const { active, over } = event;
+        if (!over) return;
 
-        // Optimistic / Transition update
-        // In a real DnD app we'd update local state immediately
-        // Here we just trigger the server action
-        startTransition(async () => {
-            await updateLeadStageAction(leadId, stageId);
-            router.refresh();
+        const activeId = active.id;
+        const overId = over.id;
+
+        // Find parent stages
+        const activeStage = findStage(activeId as string);
+        const overStage = findStage(overId as string);
+
+        if (!activeStage || !overStage || activeStage === overStage) return;
+
+        setStages((prev) => {
+            const activeStageIndex = prev.findIndex((s) => s.id === activeStage.id);
+            const overStageIndex = prev.findIndex((s) => s.id === overStage.id);
+
+            const newStages = [...prev];
+            const activeLeads = [...newStages[activeStageIndex].leads];
+            const loadToMove = activeLeads.find(l => l.id === activeId);
+
+            if (loadToMove) {
+                // Remove from source
+                newStages[activeStageIndex].leads = activeLeads.filter(l => l.id !== activeId);
+                // Add to target
+                newStages[overStageIndex].leads.push(loadToMove);
+            }
+
+            return newStages;
         });
-    };
+    }
+
+    async function onDragEnd(event: DragEndEvent) {
+        setActiveLead(null);
+        const { active, over } = event;
+
+        if (!over) return;
+
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        const activeStage = findStage(activeId);
+        const overStage = findStage(overId); // Could be a Stage ID or a Lead ID
+
+        if (activeStage && overStage) {
+            // Optimistic update is handled in dragover if moving between containers.
+            // If dragging inside same container, we might need arrayMove logic, 
+            // but for a simple Pipeline, usually simple push/filter is enough visually.
+            // We just need to trigger the Server Action to persist the new Stage.
+
+            // The real target Stage ID
+            const targetStageId = over.data.current?.type === 'Stage' ? over.id : overStage.id;
+
+            // Call Server Action
+            await moveLeadAction(activeId, targetStageId as string);
+        }
+    }
 
     return (
-        <div className="flex h-[calc(100vh-8rem)] overflow-x-auto gap-4 p-4 pb-8">
-            {stages.map((stage) => (
-                <div
-                    key={stage.id}
-                    className="flex-shrink-0 w-80 flex flex-col bg-gray-100 rounded-lg max-h-full"
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, stage.id)}
-                >
-                    {/* Column Header */}
-                    <div className="p-3 font-semibold text-gray-700 flex justify-between items-center sticky top-0 bg-gray-100 rounded-t-lg z-10 border-b border-gray-200">
-                        <span>{stage.name}</span>
-                        <span className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                            {stage.leads.length}
-                        </span>
-                    </div>
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+        >
+            <div className="flex h-full overflow-x-auto pb-4">
+                {stages.map((stage) => (
+                    <StageColumn key={stage.id} stage={stage} />
+                ))}
+            </div>
 
-                    {/* Cards Container */}
-                    <div className="flex-1 overflow-y-auto p-2 space-y-3">
-                        {stage.leads.map((lead) => (
-                            <div
-                                key={lead.id}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, lead.id)}
-                                className={`
-                  bg-white p-3 rounded shadow-sm border border-gray-200 cursor-move hover:shadow-md transition-shadow
-                  ${isPending ? 'opacity-50' : 'opacity-100'}
-                `}
-                            >
-                                <div className="font-medium text-gray-900">{lead.fullName}</div>
-                                <div className="text-xs text-blue-600 font-medium mt-1">
-                                    {lead.leadStrength.replace('_', ' ')}
-                                </div>
-
-                                <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
-                                    <span>{lead.source.name}</span>
-                                    <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
-                                </div>
-
-                                {lead.owner && (
-                                    <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
-                                        {lead.owner.email}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        {stage.leads.length === 0 && (
-                            <div className="text-center py-4 text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded">
-                                Drop items here
-                            </div>
-                        )}
-                    </div>
-                </div>
-            ))}
-        </div>
+            <DragOverlay>
+                {activeLead ? <LeadCard lead={activeLead} /> : null}
+            </DragOverlay>
+        </DndContext>
     );
 }
