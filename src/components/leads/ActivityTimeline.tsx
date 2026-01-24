@@ -66,26 +66,45 @@ export default function ActivityTimeline({
                                 ) : null}
                                 <div className="relative flex space-x-3">
                                     <div>
-                                        <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center ring-8 ring-white">
-                                            <span className="text-xs font-bold text-blue-600">
-                                                {activity.type === 'NOTE' ? '📝' : '⚡️'}
+                                        <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${activity.type === 'WHATSAPP' ? 'bg-[#25D366]' : 'bg-blue-100'}`}>
+                                            <span className={`text-xs font-bold ${activity.type === 'WHATSAPP' ? 'text-white' : 'text-blue-600'}`}>
+                                                {activity.type === 'NOTE' ? '📝' : activity.type === 'WHATSAPP' ? '💬' : '⚡️'}
                                             </span>
                                         </span>
                                     </div>
                                     <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
-                                        <div>
-                                            <p className="text-sm text-gray-500">
-                                                {activity.body}{' '}
-                                                <span className="font-medium text-gray-900">
-                                                    by {activity.creator.email}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div className="whitespace-nowrap text-right text-sm text-gray-500">
-                                            <time dateTime={activity.createdAt.toString()}>
-                                                {new Date(activity.createdAt).toLocaleDateString()}
-                                            </time>
-                                        </div>
+                                        {activity.type === 'WHATSAPP' ? (
+                                            <div className="w-full">
+                                                <div className="relative max-w-xl rounded-2xl rounded-tl-none bg-white border border-gray-200 shadow-sm p-4">
+                                                    <p className="text-[18px] leading-relaxed text-gray-900">
+                                                        {activity.body}
+                                                    </p>
+                                                    <div className="mt-2 flex items-center justify-end gap-2 text-xs text-gray-500">
+                                                        <span>
+                                                            {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span className="font-medium text-[#25D366]">
+                                                            via WhatsApp Business
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full">
+                                                <p className="text-sm text-gray-500">
+                                                    {activity.body}{' '}
+                                                    <span className="font-medium text-gray-900">
+                                                        by {activity.creator.email}
+                                                    </span>
+                                                </p>
+                                                <div className="whitespace-nowrap text-right text-sm text-gray-500 mt-1">
+                                                    <time dateTime={activity.createdAt.toString()}>
+                                                        {new Date(activity.createdAt).toLocaleDateString()}
+                                                    </time>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
