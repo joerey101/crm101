@@ -1,14 +1,20 @@
 'use server';
 
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { detectProvinceFromPhone } from '@/lib/argentina-geo';
+
+// ... inside action ...
+
+fullName: name,
+    phone: phone,
+        province: detectProvinceFromPhone(phone), // Auto-detect from Area Code
+            productsOfInterest: [interest],
 
 // Response type
 export type PublicLeadResult = {
-    success: boolean;
-    error?: string;
-    redirectUrl?: string;
-};
+                success: boolean;
+                error?: string;
+                redirectUrl?: string;
+            };
 
 export async function createPublicLeadAction(prevState: any, formData: FormData): Promise<PublicLeadResult> {
     const name = formData.get('name') as string;
@@ -58,7 +64,7 @@ export async function createPublicLeadAction(prevState: any, formData: FormData)
                 brandId: brand.id,
                 fullName: name,
                 phone: phone,
-                province: 'Buenos Aires', // Default for public web leads
+                province: detectProvinceFromPhone(phone), // Auto-detect from Area Code
                 productsOfInterest: [interest],
                 stageId: stage.id,
                 sourceId: source.id,
