@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { detectProvinceFromPhone } from '@/lib/argentina-geo';
+import { getAssigneeForProvince } from '@/lib/lead-routing';
 
 // Response type
 export type PublicLeadResult = {
@@ -54,18 +55,23 @@ export async function createPublicLeadAction(prevState: any, formData: FormData)
 
         if (!adminUser) return { success: false, error: 'System configuration error (No Admin).' };
 
+        // 5. Routing (Geo-Assignment)
+        const detectedProvince = detectProvinceFromPhone(phone);
+        const assignedUserId = await getAssigneeForProvince(detectedProvince, brand.id);
+
         const newLead = await prisma.lead.create({
             data: {
                 brandId: brand.id,
                 fullName: name,
                 phone: phone,
-                province: detectProvinceFromPhone(phone), // Auto-detect from Area Code
+                province: detectedProvince,
                 productsOfInterest: [interest],
                 stageId: stage.id,
                 sourceId: source.id,
                 leadStrength: 'PHONE_ONLY',
-                firstResponseDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h SLA
-                createdByUserId: adminUser.id, // Attributed to Admin as "System"
+                firstResponseDueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                createdByUserId: adminUser.id,
+                ownerUserId: assignedUserId, // Geo-Routing Result!
             }
         });
 

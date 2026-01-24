@@ -59,6 +59,7 @@ export type CreateLeadData = {
     stageId: string; // usually 'New'
     createdById: string;
     brandId: string;
+    ownerUserId?: string | null;
 };
 
 export async function createLead(data: CreateLeadData) {
@@ -80,6 +81,7 @@ export async function createLead(data: CreateLeadData) {
             sourceId: data.sourceId,
             stageId: data.stageId,
             createdByUserId: data.createdById,
+            ownerUserId: data.ownerUserId,
             leadStrength: strength,
             productsOfInterest: data.productsOfInterest,
             firstResponseDueAt,

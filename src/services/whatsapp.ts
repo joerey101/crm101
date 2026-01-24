@@ -2,6 +2,8 @@
 import { prisma } from '@/lib/prisma';
 import { createLead } from './leads';
 import { createActivity } from './activities';
+import { detectProvinceFromPhone } from '@/lib/argentina-geo';
+import { getAssigneeForProvince } from '@/lib/lead-routing';
 
 export async function processIncomingWhatsApp(
     senderPhone: string,
@@ -55,18 +57,35 @@ export async function processIncomingWhatsApp(
         }
 
         if (source && stage && admin) {
+            // Geo & Routing Logic
+            const detectedProvince = detectProvinceFromPhone(senderPhone);
+            const assignedUserId = await getAssigneeForProvince(detectedProvince, brand.id);
+
             lead = await createLead({
                 brandId: brand.id,
                 fullName: senderName || 'Unknown WhatsApp User',
                 phone: senderPhone,
-                email: '', // Optional
-                province: 'Unknown',
+                email: '',
+                province: detectedProvince, // Geo
                 sourceId: source.id,
                 stageId: stage.id,
                 createdById: admin.id,
                 productsOfInterest: []
             });
-            console.log('✨ New Lead created via WhatsApp:', lead.id);
+
+            // If assigned, we must update it because createLead might not support ownerUserId in its params yet...
+            // Let's check createLeadData type in leads.ts. 
+            // Wait, I should check createLead signature first.
+            // Assuming createLead takes minimal data. 
+            // Better to perform an update immediately if createLead doesn't accept ownerUserId.
+            if (assignedUserId) {
+                await prisma.lead.update({
+                    where: { id: lead.id },
+                    data: { ownerUserId: assignedUserId }
+                });
+            }
+
+            console.log('✨ New Lead created via WhatsApp:', lead.id, 'Assigned to:', assignedUserId);
         } else {
             console.error('❌ processIncomingWhatsApp: CRITICAL FAILURE. Could not resolve dependencies despite fallbacks.', {
                 hasSource: !!source,
