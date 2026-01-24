@@ -41,8 +41,10 @@ export async function POST(req: NextRequest) {
 
             console.log('📩 WhatsApp Recibido:', { senderPhone, name, text });
 
-            // TODO: Process message (Find lead -> Add activity)
-            // We will implement logic here in next step
+            if (senderPhone && text) {
+                const { processIncomingWhatsApp } = await import('@/services/whatsapp');
+                await processIncomingWhatsApp(senderPhone, name || 'Unknown', text);
+            }
         }
 
         return new NextResponse('EVENT_RECEIVED', { status: 200 });
