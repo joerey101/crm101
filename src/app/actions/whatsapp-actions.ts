@@ -32,11 +32,18 @@ export async function sendWhatsAppAction(leadId: string, message: string) {
         let cleanPhone = lead.phone.replace(/\+/g, '').replace(/\D/g, '');
 
         // ARGENTINA SPECIFIC FIX FOR SANDBOX (and sometimes Prod)
-        // If it starts with 549, remove the 9 to make it 54...
-        // Sandbox often needs 54 + 11 + 15... or just 54 + 11... but 549 fails allowlist check usually.
-        // Our successful test was 541115...
-        // If the number is 54911..., we convert to 5411... 
-        if (cleanPhone.startsWith('549')) {
+        // Meta Sandbox for Argentina often requires the local mobile prefix '15' AFTER the area code,
+        // and NO '9' before it.
+        // Example: 
+        //   Input (DB): 5491133590001 (+54 9 11 ...)
+        //   Target:     54111533590001 (54 11 15 ...) - Verified in manual test.
+
+        // Fix for Buenos Aires (Area Code 11) - Most common
+        if (cleanPhone.startsWith('54911')) {
+            cleanPhone = cleanPhone.replace('54911', '541115');
+        }
+        // Fallback for others if needed: just remove 9 (might fail if 15 represents strict local format)
+        else if (cleanPhone.startsWith('549')) {
             cleanPhone = cleanPhone.replace('549', '54');
         }
 
