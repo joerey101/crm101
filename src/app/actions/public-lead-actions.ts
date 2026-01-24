@@ -57,7 +57,8 @@ export async function createPublicLeadAction(prevState: any, formData: FormData)
             data: {
                 brandId: brand.id,
                 fullName: name,
-                phone: phone, // Save raw, or normalize? Better raw for now or minimal basic simple cleanup
+                phone: phone,
+                province: 'Buenos Aires', // Default for public web leads
                 productsOfInterest: [interest],
                 stageId: stage.id,
                 sourceId: source.id,
