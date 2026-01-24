@@ -8,7 +8,11 @@ export async function GET() {
     try {
         const brandCount = await prisma.brand.count();
         const brands = await prisma.brand.findMany({ include: { users: true, sources: true } });
-        const leads = await prisma.lead.findMany({ take: 5, orderBy: { createdAt: 'desc' } });
+        const leads = await prisma.lead.findMany({
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            include: { activities: { orderBy: { createdAt: 'desc' }, take: 3 } }
+        });
 
         return NextResponse.json({
             status: 'ok',
