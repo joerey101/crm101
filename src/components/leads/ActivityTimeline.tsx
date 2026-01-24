@@ -1,8 +1,9 @@
 'use client';
 
 import { addNoteAction } from '@/app/actions/activity-actions';
+import { sendWhatsAppAction } from '@/app/actions/whatsapp-actions';
 import { Activity } from '@prisma/client';
-import { useActionState, useRef } from 'react';
+import { useActionState, useRef, useState } from 'react';
 
 type ActivityWithUser = Activity & {
     creator: { email: string; id: string };
@@ -15,11 +16,25 @@ export default function ActivityTimeline({
     leadId: string;
     activities: ActivityWithUser[];
 }) {
+    const [activeTab, setActiveTab] = useState<'NOTE' | 'WHATSAPP'>('NOTE');
     const formRef = useRef<HTMLFormElement>(null);
-    const [errorMessage, dispatch, isPending] = useActionState(async (prev: any, formData: FormData) => {
-        const result = await addNoteAction(leadId, formData.get('content') as string);
+
+    const [errorMessage, dispatch, isPending] = useActionState(async (prev: string | null | undefined, formData: FormData) => {
+        const content = formData.get('content') as string;
+        // The type comes from the state passed via hidden input or just logic here if we trusted state, 
+        // but hidden input is safer for form data consistency.
+        const type = formData.get('type') as string;
+
+        let result;
+        if (type === 'WHATSAPP') {
+            result = await sendWhatsAppAction(leadId, content);
+        } else {
+            result = await addNoteAction(leadId, content);
+        }
+
         if (result?.success) {
             formRef.current?.reset();
+            // Optional: Switch back to Note after sending? Or keep in WA mode? Keeping is better for conversation.
         }
         return result?.error;
     }, null);
@@ -27,26 +42,62 @@ export default function ActivityTimeline({
     return (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-                <h3 className="font-semibold text-gray-900">Activity & Notes</h3>
+                <div className="flex space-x-4">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('NOTE')}
+                        className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'NOTE'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Internal Note
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('WHATSAPP')}
+                        className={`text-sm font-medium pb-2 border-b-2 transition-colors ${activeTab === 'WHATSAPP'
+                            ? 'border-[#25D366] text-[#25D366]'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        WhatsApp Reply
+                    </button>
+                </div>
             </div>
 
-            {/* Add Note Input */}
+            {/* Add Note/Message Input */}
             <div className="p-4 border-b border-gray-100">
                 <form ref={formRef} action={dispatch}>
+                    <input type="hidden" name="type" value={activeTab} />
                     <textarea
                         name="content"
                         rows={3}
-                        placeholder="Log a call, note, or meeting..."
-                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-3 border text-gray-900"
+                        placeholder={activeTab === 'WHATSAPP' ? "Type a WhatsApp message..." : "Log a call, note, or meeting..."}
+                        className={`w-full rounded-md shadow-sm sm:text-sm p-3 border text-gray-900 focus:ring-opacity-50 ${activeTab === 'WHATSAPP'
+                            ? 'border-green-300 focus:border-[#25D366] focus:ring-[#25D366]'
+                            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                            }`}
                         required
                     />
+                    {errorMessage && (
+                        <p className="mt-2 text-sm text-red-600">{errorMessage}</p>
+                    )}
                     <div className="mt-2 flex justify-end">
                         <button
                             disabled={isPending}
                             type="submit"
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            className={`px-4 py-2 text-white text-sm font-medium rounded-md disabled:opacity-50 transition-colors ${activeTab === 'WHATSAPP'
+                                ? 'bg-[#25D366] hover:bg-[#20bd5a]'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
                         >
-                            {isPending ? 'Saving...' : 'Log Activity'}
+                            {isPending
+                                ? 'Sending...'
+                                : activeTab === 'WHATSAPP'
+                                    ? 'Send WhatsApp'
+                                    : 'Log Activity'
+                            }
                         </button>
                     </div>
                 </form>

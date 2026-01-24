@@ -102,3 +102,43 @@ export async function processIncomingWhatsApp(
         }
     }
 }
+
+export async function sendWhatsAppMessage(to: string, text: string) {
+    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+    if (!token || !phoneId) {
+        console.error('❌ Missing WhatsApp configuration (TOKEN or PHONE_ID)');
+        return { success: false, error: 'Configuration Error' };
+    }
+
+    try {
+        const response = await fetch(`https://graph.facebook.com/v22.0/${phoneId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: to,
+                type: 'text',
+                text: { body: text }
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error('❌ Meta API Error:', JSON.stringify(data, null, 2));
+            return { success: false, error: data.error?.message || 'Meta API Error' };
+        }
+
+        console.log('✅ WhatsApp message sent:', data);
+        return { success: true, data };
+    } catch (error) {
+        console.error('❌ Network Error sending WhatsApp:', error);
+        return { success: false, error: 'Network Error' };
+    }
+}
