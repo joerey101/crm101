@@ -8,10 +8,9 @@ export async function processIncomingWhatsApp(
     senderName: string,
     text: string
 ) {
-    // 1. Find existing lead by phone
-    // Normalize phone? For now assume raw match or simple contains.
-    // Meta sends without +, usually country code + number.
+    console.log('🔄 Processing WhatsApp:', { senderPhone, senderName, text });
 
+    // 1. Find existing lead by phone
     // We need to find a brand context first.
     const brand = await prisma.brand.findFirst();
     if (!brand) {
@@ -60,7 +59,7 @@ export async function processIncomingWhatsApp(
                 brandId: brand.id,
                 fullName: senderName || 'Unknown WhatsApp User',
                 phone: senderPhone,
-                email: '',
+                email: '', // Optional
                 province: 'Unknown',
                 sourceId: source.id,
                 stageId: stage.id,
@@ -75,7 +74,10 @@ export async function processIncomingWhatsApp(
                 hasAdmin: !!admin,
                 brandId: brand.id
             });
+            return;
         }
+    } else {
+        console.log('✅ Found existing lead:', lead.id);
     }
 
     if (lead) {
@@ -87,13 +89,13 @@ export async function processIncomingWhatsApp(
         }
 
         if (botUser) {
-
+            const messageBody = text ? text : '[Non-text message received]';
             await createActivity({
                 brandId: brand.id,
                 leadId: lead.id,
                 userId: botUser.id,
                 type: 'WHATSAPP',
-                body: `[Incoming Message]: ${text}`,
+                body: messageBody,
                 outcome: 'Received'
             });
             console.log('💬 WhatsApp Activity logged for lead:', lead.id);
