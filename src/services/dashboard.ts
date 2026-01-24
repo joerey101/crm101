@@ -54,6 +54,36 @@ export async function getDashboardStats(brandId: string, userId: string) {
         ? Math.round((closedWonCount / totalClosed) * 100)
         : 0;
 
+    // 4. Total Active Leads (Not closed)
+    const totalActiveLeads = await prisma.lead.count({
+        where: {
+            brandId,
+            stage: { isClosed: false }
+        }
+    });
+
+    // 5. Funnel (Leads by Stage)
+    // We want all stages, even empty ones.
+    const stages = await prisma.stage.findMany({
+        where: { brandId },
+        orderBy: { order: 'asc' },
+        include: {
+            _count: {
+                select: { leads: true }
+            }
+        }
+    });
+
+    const funnel = stages.map((s, index) => {
+        // Simple color rotation or logic
+        const colors = ['#3b82f6', '#8b5cf6', '#eab308', '#22c55e', '#ef4444'];
+        return {
+            stageName: s.name,
+            count: s._count.leads,
+            color: colors[index % colors.length]
+        };
+    });
+
     return {
         recentLeads,
         myTasks,
@@ -61,6 +91,11 @@ export async function getDashboardStats(brandId: string, userId: string) {
             conversionRate,
             totalClosed,
             won: closedWonCount
-        }
+        },
+        overview: {
+            totalActive: totalActiveLeads,
+            totalLeads: await prisma.lead.count({ where: { brandId } })
+        },
+        funnel
     };
 }

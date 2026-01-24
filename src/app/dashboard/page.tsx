@@ -1,6 +1,8 @@
 import { auth, signOut } from '@/auth';
 import { getDashboardStats } from '@/services/dashboard';
 import Link from 'next/link';
+import StatsGrid from '@/components/dashboard/StatsGrid';
+import LeadMapWrapper from '@/components/dashboard/LeadMapWrapper';
 
 export default async function DashboardPage() {
     const session = await auth();
@@ -43,59 +45,7 @@ export default async function DashboardPage() {
     return (
         <div className="min-h-screen bg-gray-50 p-8">
             <div className="max-w-6xl mx-auto">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 flex justify-between items-center mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-                        <p className="text-gray-500 mt-1">
-                            Welcome back, <span className="font-semibold text-gray-800">{session.user.email}</span>
-                        </p>
-                        <span className="inline-flex mt-2 items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                            {user.role}
-                        </span>
-                    </div>
-                    <div>
-                        <form
-                            action={async () => {
-                                'use server';
-                                await signOut();
-                            }}
-                        >
-                            <button className="bg-white text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-200 px-4 py-2 rounded-md font-medium transition-all text-sm shadow-sm">
-                                Sign Out
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {/* Performance Widget */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Performance</h3>
-                        <div className="flex items-end space-x-2">
-                            <span className="text-4xl font-bold text-blue-600">{stats.performance.conversionRate}%</span>
-                            <span className="text-gray-400 mb-1 font-medium">Conversion</span>
-                        </div>
-                        <p className="text-sm text-gray-400 mt-2">
-                            {stats.performance.won} won out of {stats.performance.totalClosed} closed
-                        </p>
-                    </div>
-
-                    {/* Quick Stats Placeholder */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Pipeline Velocity</h3>
-                        <div className="flex items-center justify-center h-20 bg-gray-50 rounded-lg text-gray-400 text-sm">
-                            Coming soon v1.1
-                        </div>
-                    </div>
-
-                    {/* Quick Stats Placeholder 2 */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">SLA Compliance</h3>
-                        <div className="flex items-center justify-center h-20 bg-gray-50 rounded-lg text-gray-400 text-sm">
-                            Coming soon v1.1
-                        </div>
-                    </div>
-                </div>
+                <StatsGrid stats={stats} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Recent Leads */}
@@ -151,6 +101,14 @@ export default async function DashboardPage() {
                             )}
                         </div>
                     </div>
+                </div>
+
+                {/* Geo-Location Module */}
+                <div className="mt-8">
+                    <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>🌍</span> Live Lead Map
+                    </h3>
+                    <LeadMapWrapper leads={stats.recentLeads} />
                 </div>
             </div>
         </div>
