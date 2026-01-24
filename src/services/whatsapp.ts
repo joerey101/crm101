@@ -13,34 +13,54 @@ export async function processIncomingWhatsApp(
     // Meta sends without +, usually country code + number.
 
     // We need to find a brand context first.
-    // LIMITATION: In v1.0 multi-tenant, incoming webhook doesn't know "which brand" unless phone number is mapped to brand.
-    // For this POC, we will use the FIRST brand found in DB.
     const brand = await prisma.brand.findFirst();
-    if (!brand) return; // Should not happen
+    if (!brand) {
+        console.error('❌ processIncomingWhatsApp: No Brand found in DB.');
+        return;
+    }
 
     // Find lead
+    // Robust matching: Try to match the last 7 digits to handle +549 vs 11 differences
+    const cleanPhone = senderPhone.replace(/\D/g, '');
+    const phoneSuffix = cleanPhone.length > 7 ? cleanPhone.slice(-7) : cleanPhone;
+
     let lead = await prisma.lead.findFirst({
         where: {
             brandId: brand.id,
-            phone: { contains: senderPhone.replace('+', '') }
+            phone: { contains: phoneSuffix }
         }
     });
 
     if (!lead) {
-        // Create new Lead
-        // We need default Source and Stage
-        const source = await prisma.source.findFirst({ where: { brandId: brand.id, name: 'WhatsApp Business' } });
-        const stage = await prisma.stage.findFirst({ where: { brandId: brand.id, order: 1 } });
+        // 2. Ensure Source exists (Auto-create/Healing)
+        let source = await prisma.source.findFirst({ where: { brandId: brand.id, name: 'WhatsApp Business' } });
+        if (!source) {
+            console.log('⚠️ Source "WhatsApp Business" not found. Creating it...');
+            source = await prisma.source.create({
+                data: { brandId: brand.id, name: 'WhatsApp Business' }
+            });
+        }
 
-        // We need a creator user (system or admin). Let's pick the first ADMIN found.
-        const admin = await prisma.user.findFirst({ where: { brandId: brand.id, role: 'ADMIN' } });
+        // 3. Ensure Stage exists (Fallback)
+        let stage = await prisma.stage.findFirst({ where: { brandId: brand.id, order: 1 } });
+        if (!stage) {
+            console.warn('⚠️ Stage order 1 not found. Falling back to ANY stage.');
+            stage = await prisma.stage.findFirst({ where: { brandId: brand.id } });
+        }
+
+        // 4. Ensure Creator exists (Fallback)
+        let admin = await prisma.user.findFirst({ where: { brandId: brand.id, role: 'ADMIN' } });
+        if (!admin) {
+            console.warn('⚠️ Admin user not found. Falling back to ANY user for attribution.');
+            admin = await prisma.user.findFirst({ where: { brandId: brand.id } });
+        }
 
         if (source && stage && admin) {
             lead = await createLead({
                 brandId: brand.id,
                 fullName: senderName || 'Unknown WhatsApp User',
                 phone: senderPhone,
-                email: '', // No email from whatsapp
+                email: '',
                 province: 'Unknown',
                 sourceId: source.id,
                 stageId: stage.id,
@@ -48,17 +68,26 @@ export async function processIncomingWhatsApp(
                 productsOfInterest: []
             });
             console.log('✨ New Lead created via WhatsApp:', lead.id);
+        } else {
+            console.error('❌ processIncomingWhatsApp: CRITICAL FAILURE. Could not resolve dependencies despite fallbacks.', {
+                hasSource: !!source,
+                hasStage: !!stage,
+                hasAdmin: !!admin,
+                brandId: brand.id
+            });
         }
     }
 
     if (lead) {
         // Log Activity
-        // We need a user to attribute this activity to.
-        // If the lead has an owner, maybe we attribute it to them? Or System?
-        // Let's attribute to the Lead Creator or the Admin we found.
-        const botUser = await prisma.user.findFirst({ where: { brandId: brand.id, role: 'ADMIN' } });
+        // Attribute to the Lead Creator or fallback to any Admin/User found
+        let botUser = await prisma.user.findFirst({ where: { brandId: brand.id, role: 'ADMIN' } });
+        if (!botUser) {
+            botUser = await prisma.user.findFirst({ where: { brandId: brand.id } });
+        }
 
         if (botUser) {
+
             await createActivity({
                 brandId: brand.id,
                 leadId: lead.id,
