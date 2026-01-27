@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -7,111 +7,75 @@ datasource db {
   provider = "postgresql"
 }
 
-// 3.1 Multi-marca (Inferred Model for referential integrity)
 model Brand {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  users                  User[]
-  leads                  Lead[]
-  stages                 Stage[]
-  sources                Source[]
+  id                     String                  @id @default(uuid())
+  name                   String
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  activities             Activity[]
+  auditLogs              AuditLog[]
   closeReasons           CloseReason[]
   customFieldDefinitions CustomFieldDefinition[]
-  auditLogs              AuditLog[]
-  activities             Activity[]
+  leads                  Lead[]
+  sources                Source[]
+  stages                 Stage[]
   tasks                  Task[]
+  users                  User[]
 
   @@map("brands")
 }
 
-// 3.2 Users & Roles
-enum Role {
-  ADMIN
-  MANAGER
-  SELLER
-}
-
 model User {
-  id           String   @id @default(uuid())
-  brandId      String   @map("brand_id")
+  id           String     @id @default(uuid())
+  brandId      String     @map("brand_id")
   email        String
-  passwordHash String   @map("password_hash")
+  passwordHash String     @map("password_hash")
   role         Role
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  brand Brand @relation(fields: [brandId], references: [id])
-
-  // Relations
-  leadsOwned   Lead[]     @relation("LeadOwner")
-  leadsCreated Lead[]     @relation("LeadCreator")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
   activities   Activity[]
-  tasks        Task[]     @relation("TaskAssignee")
   auditActions AuditLog[]
+  leadsCreated Lead[]     @relation("LeadCreator")
+  leadsOwned   Lead[]     @relation("LeadOwner")
+  tasks        Task[]     @relation("TaskAssignee")
+  brand        Brand      @relation(fields: [brandId], references: [id])
 
   @@unique([brandId, email])
   @@map("users")
 }
 
-// 3.3 Leads (Core)
-enum LeadStrength {
-  BOTH
-  PHONE_ONLY
-  EMAIL_ONLY
-}
-
 model Lead {
-  id      String @id @default(uuid())
-  brandId String @map("brand_id")
-
-  // Identificación
-  fullName String  @map("full_name")
-  phone    String?
-  email    String?
-
-  // Fiscal / Dirección
-  cuit     String?
-  address  String?
-  locality String?
-  province String
-
-  // Negocio
-  sourceId        String  @map("source_id")
-  stageId         String  @map("stage_id")
-  ownerUserId     String? @map("owner_user_id")
-  createdByUserId String  @map("created_by_user_id")
-
-  // Clasificación
-  leadStrength      LeadStrength @map("lead_strength")
-  productsOfInterest Json?        @map("products_of_interest") // jsonb
-
-  // SLA
-  firstResponseDueAt DateTime  @map("first_response_due_at")
-  firstContactAt     DateTime? @map("first_contact_at")
-
-  // Estado
-  closedAt      DateTime? @map("closed_at")
-  closeReasonId String?   @map("close_reason_id")
-
-  // Timestamps
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  lastActivityAt DateTime @default(now()) @map("last_activity_at")
-
-  // Relations
-  brand       Brand        @relation(fields: [brandId], references: [id])
-  source      Source       @relation(fields: [sourceId], references: [id])
-  stage       Stage        @relation(fields: [stageId], references: [id])
-  owner       User?        @relation("LeadOwner", fields: [ownerUserId], references: [id])
-  creator     User         @relation("LeadCreator", fields: [createdByUserId], references: [id])
-  closeReason CloseReason? @relation(fields: [closeReasonId], references: [id])
-
-  activities        Activity[]
-  tasks             Task[]
-  customFieldValues CustomFieldValue[]
+  id                 String             @id @default(uuid())
+  brandId            String             @map("brand_id")
+  fullName           String             @map("full_name")
+  phone              String?
+  email              String?
+  cuit               String?
+  address            String?
+  locality           String?
+  province           String
+  sourceId           String             @map("source_id")
+  stageId            String             @map("stage_id")
+  ownerUserId        String?            @map("owner_user_id")
+  createdByUserId    String             @map("created_by_user_id")
+  leadStrength       LeadStrength       @map("lead_strength")
+  productsOfInterest Json?              @map("products_of_interest")
+  firstResponseDueAt DateTime           @map("first_response_due_at")
+  firstContactAt     DateTime?          @map("first_contact_at")
+  closedAt           DateTime?          @map("closed_at")
+  closeReasonId      String?            @map("close_reason_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  lastActivityAt     DateTime           @default(now()) @map("last_activity_at")
+  activities         Activity[]
+  customFieldValues  CustomFieldValue[]
+  brand              Brand              @relation(fields: [brandId], references: [id])
+  closeReason        CloseReason?       @relation(fields: [closeReasonId], references: [id])
+  creator            User               @relation("LeadCreator", fields: [createdByUserId], references: [id])
+  owner              User?              @relation("LeadOwner", fields: [ownerUserId], references: [id])
+  source             Source             @relation(fields: [sourceId], references: [id])
+  stage              Stage              @relation(fields: [stageId], references: [id])
+  tasks              Task[]
 
   @@index([brandId])
   @@index([ownerUserId])
@@ -122,7 +86,134 @@ model Lead {
   @@map("leads")
 }
 
-// 3.4 Activities (Timeline)
+model Activity {
+  id              String       @id @default(uuid())
+  brandId         String       @map("brand_id")
+  leadId          String       @map("lead_id")
+  type            ActivityType
+  body            String
+  outcome         String?
+  createdByUserId String       @map("created_by_user_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  brand           Brand        @relation(fields: [brandId], references: [id])
+  creator         User         @relation(fields: [createdByUserId], references: [id])
+  lead            Lead         @relation(fields: [leadId], references: [id])
+
+  @@index([leadId])
+  @@map("activities")
+}
+
+model Task {
+  id               String       @id @default(uuid())
+  brandId          String       @map("brand_id")
+  leadId           String       @map("lead_id")
+  assignedToUserId String       @map("assigned_to_user_id")
+  dueAt            DateTime     @map("due_at")
+  status           TaskStatus   @default(OPEN)
+  priority         TaskPriority @default(MEDIUM)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  description      String?
+  title            String
+  assignee         User         @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
+  brand            Brand        @relation(fields: [brandId], references: [id])
+  lead             Lead         @relation(fields: [leadId], references: [id])
+
+  @@index([assignedToUserId])
+  @@map("tasks")
+}
+
+model Stage {
+  id       String  @id @default(uuid())
+  brandId  String  @map("brand_id")
+  name     String
+  order    Int
+  isClosed Boolean @default(false) @map("is_closed")
+  isWon    Boolean @default(false) @map("is_won")
+  leads    Lead[]
+  brand    Brand   @relation(fields: [brandId], references: [id])
+
+  @@map("stages")
+}
+
+model Source {
+  id      String @id @default(uuid())
+  brandId String @map("brand_id")
+  name    String
+  leads   Lead[]
+  brand   Brand  @relation(fields: [brandId], references: [id])
+
+  @@map("sources")
+}
+
+model CloseReason {
+  id       String              @id @default(uuid())
+  brandId  String              @map("brand_id")
+  name     String
+  category CloseReasonCategory
+  brand    Brand               @relation(fields: [brandId], references: [id])
+  leads    Lead[]
+
+  @@map("close_reasons")
+}
+
+model CustomFieldDefinition {
+  id                String             @id @default(uuid())
+  brandId           String             @map("brand_id")
+  entityType        String             @default("LEAD") @map("entity_type")
+  key               String
+  label             String
+  type              CustomFieldType
+  options           Json?              @map("options")
+  requiredOnStageId String?            @map("required_on_stage_id")
+  brand             Brand              @relation(fields: [brandId], references: [id])
+  values            CustomFieldValue[]
+
+  @@unique([brandId, entityType, key])
+  @@map("custom_field_definitions")
+}
+
+model CustomFieldValue {
+  id         String                @id @default(uuid())
+  leadId     String                @map("lead_id")
+  fieldDefId String                @map("field_def_id")
+  value      Json
+  definition CustomFieldDefinition @relation(fields: [fieldDefId], references: [id])
+  lead       Lead                  @relation(fields: [leadId], references: [id])
+
+  @@unique([leadId, fieldDefId])
+  @@map("custom_field_values")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  brandId     String   @map("brand_id")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  action      String
+  actorUserId String   @map("actor_user_id")
+  oldValue    Json?    @map("old_value")
+  newValue    Json?    @map("new_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+  actor       User     @relation(fields: [actorUserId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id])
+
+  @@index([entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  SELLER
+}
+
+enum LeadStrength {
+  BOTH
+  PHONE_ONLY
+  EMAIL_ONLY
+}
+
 enum ActivityType {
   CALL
   WHATSAPP
@@ -131,25 +222,6 @@ enum ActivityType {
   NOTE
 }
 
-model Activity {
-  id              String       @id @default(uuid())
-  brandId         String       @map("brand_id")
-  leadId          String       @map("lead_id")
-  type            ActivityType
-  body            String       @db.Text
-  outcome         String?
-  createdByUserId String       @map("created_by_user_id")
-  createdAt       DateTime     @default(now()) @map("created_at")
-
-  brand   Brand @relation(fields: [brandId], references: [id])
-  lead    Lead  @relation(fields: [leadId], references: [id])
-  creator User  @relation(fields: [createdByUserId], references: [id])
-
-  @@index([leadId])
-  @@map("activities")
-}
-
-// 3.5 Tasks
 enum TaskStatus {
   OPEN
   DONE
@@ -162,72 +234,11 @@ enum TaskPriority {
   HIGH
 }
 
-model Task {
-  id               String       @id @default(uuid())
-  brandId          String       @map("brand_id")
-  leadId           String       @map("lead_id")
-  assignedToUserId String       @map("assigned_to_user_id")
-  title            String
-  description      String?
-  dueAt            DateTime     @map("due_at")
-  status           TaskStatus   @default(OPEN)
-  priority         TaskPriority @default(MEDIUM)
-  createdAt        DateTime     @default(now()) @map("created_at")
-
-  brand    Brand @relation(fields: [brandId], references: [id])
-  lead     Lead  @relation(fields: [leadId], references: [id])
-  assignee User  @relation("TaskAssignee", fields: [assignedToUserId], references: [id])
-
-  @@index([assignedToUserId])
-  @@map("tasks")
-}
-
-// 3.6 Pipeline Stages
-model Stage {
-  id       String  @id @default(uuid())
-  brandId  String  @map("brand_id")
-  name     String
-  order    Int
-  isClosed Boolean @default(false) @map("is_closed")
-  isWon    Boolean @default(false) @map("is_won")
-
-  brand Brand  @relation(fields: [brandId], references: [id])
-  leads Lead[]
-
-  @@map("stages")
-}
-
-// 3.7 Sources
-model Source {
-  id      String @id @default(uuid())
-  brandId String @map("brand_id")
-  name    String
-
-  brand Brand  @relation(fields: [brandId], references: [id])
-  leads Lead[]
-
-  @@map("sources")
-}
-
-// 3.8 Close Reasons
 enum CloseReasonCategory {
   WON
   LOST
 }
 
-model CloseReason {
-  id       String              @id @default(uuid())
-  brandId  String              @map("brand_id")
-  name     String
-  category CloseReasonCategory
-
-  brand Brand  @relation(fields: [brandId], references: [id])
-  leads Lead[]
-
-  @@map("close_reasons")
-}
-
-// 3.9 Custom Fields (Configurable)
 enum CustomFieldType {
   TEXT
   NUMBER
@@ -235,55 +246,4 @@ enum CustomFieldType {
   MULTISELECT
   DATE
   BOOL
-}
-
-// Mapping entity_type = 'LEAD' implicitly, or explicit if we add more entities later
-model CustomFieldDefinition {
-  id                String          @id @default(uuid())
-  brandId           String          @map("brand_id")
-  entityType        String          @default("LEAD") @map("entity_type")
-  key               String
-  label             String
-  type              CustomFieldType
-  options           Json?           @map("options") // jsonb
-  requiredOnStageId String?         @map("required_on_stage_id")
-
-  brand  Brand              @relation(fields: [brandId], references: [id])
-  values CustomFieldValue[]
-
-  @@unique([brandId, entityType, key])
-  @@map("custom_field_definitions")
-}
-
-model CustomFieldValue {
-  id         String @id @default(uuid())
-  leadId     String @map("lead_id")
-  fieldDefId String @map("field_def_id")
-  value      Json // jsonb
-
-  lead       Lead                  @relation(fields: [leadId], references: [id])
-  definition CustomFieldDefinition @relation(fields: [fieldDefId], references: [id])
-
-  @@unique([leadId, fieldDefId])
-  @@map("custom_field_values")
-}
-
-// 3.10 Audit Log
-model AuditLog {
-  id          String   @id @default(uuid())
-  brandId     String   @map("brand_id")
-  entityType  String   @map("entity_type")
-  entityId    String   @map("entity_id")
-  action      String
-  actorUserId String   @map("actor_user_id")
-  oldValue    Json?    @map("old_value")
-  newValue    Json?    @map("new_value")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  brand Brand @relation(fields: [brandId], references: [id])
-  actor User  @relation(fields: [actorUserId], references: [id])
-
-  @@index([entityId])
-  @@index([action])
-  @@map("audit_logs")
 }

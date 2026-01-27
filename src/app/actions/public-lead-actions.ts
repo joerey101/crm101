@@ -83,14 +83,16 @@ export async function createPublicLeadAction(prevState: any, formData: FormData)
         // This usually means chatting with the BUSINESS number.
         // URL: wa.me/<BUSINESS_NUMBER>?text=...
 
-        // We need the Business Phone Number. It's often in ENV or Brand settings.
-        // For now, I will use a placeholder or ENV if available, else a default.
-        const businessPhone = process.env.NEXT_PUBLIC_BUSINESS_PHONE || '5491133590001'; // Defaulting to the one we saw earlier
+        // We need the Business Phone Number. 
+        // For the Meta Review Video, we MUST use the Meta Test Number: 15551417268
+        const businessPhone = process.env.NEXT_PUBLIC_BUSINESS_PHONE || '15551417268';
 
         const message = `Hola, soy ${name}. Dejé mis datos por ${interest}.`;
         const encodedMessage = encodeURIComponent(message);
 
-        const waUrl = `https://wa.me/${businessPhone}?text=${encodedMessage}`;
+        // Clean business phone: only digits
+        const cleanBusinessPhone = businessPhone.replace(/\D/g, '');
+        const waUrl = `https://wa.me/${cleanBusinessPhone}?text=${encodedMessage}`;
 
         return { success: true, redirectUrl: waUrl };
 

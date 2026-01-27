@@ -118,3 +118,17 @@ export async function getLeadById(leadId: string) {
         },
     });
 }
+
+export async function deleteLead(leadId: string) {
+    return await prisma.$transaction(async (tx) => {
+        // 1. Delete associated data
+        await tx.activity.deleteMany({ where: { leadId } });
+        await tx.task.deleteMany({ where: { leadId } });
+        await tx.customFieldValue.deleteMany({ where: { leadId } });
+
+        // 2. Delete the lead
+        return await tx.lead.delete({
+            where: { id: leadId }
+        });
+    });
+}

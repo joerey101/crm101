@@ -94,3 +94,20 @@ export async function updateLeadStageAction(leadId: string, stageId: string) {
         return { error: 'Failed to update stage' };
     }
 }
+
+export async function deleteLeadAction(leadId: string) {
+    const session = await auth();
+    if (!session?.user?.id) return { error: 'Unauthorized' };
+
+    try {
+        const { deleteLead } = await import('@/services/leads');
+        await deleteLead(leadId);
+
+        revalidatePath('/dashboard/leads');
+        revalidatePath('/dashboard/pipeline');
+        return { success: true };
+    } catch (error) {
+        console.error('Delete Lead Error:', error);
+        return { error: 'Failed to delete lead' };
+    }
+}

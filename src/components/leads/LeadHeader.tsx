@@ -1,5 +1,6 @@
 import { Lead, Stage } from '@prisma/client';
 import LeadAssigner from './LeadAssigner';
+import DeleteLeadButton from './DeleteLeadButton';
 
 export default function LeadHeader({ lead, users }: { lead: Lead & { stage: Stage }, users: { id: string, email: string }[] }) {
     return (
@@ -15,6 +16,7 @@ export default function LeadHeader({ lead, users }: { lead: Lead & { stage: Stag
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <DeleteLeadButton leadId={lead.id} leadName={lead.fullName} />
                     <span className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
                         {lead.stage.name}
                     </span>
