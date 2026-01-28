@@ -123,7 +123,7 @@ export async function processIncomingWhatsApp(
 }
 
 export async function sendWhatsAppMessage(to: string, text: string) {
-    const token = process.env.WHATSAPP_ACCESS_TOKEN;
+    const token = process.env.WHATSAPP_TOKEN_V2 || process.env.WHATSAPP_ACCESS_TOKEN;
     const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
     if (!token || !phoneId) {
