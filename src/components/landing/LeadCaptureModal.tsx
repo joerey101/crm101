@@ -39,7 +39,7 @@ export default function LeadCaptureModal({ isOpen, onClose, interest = 'General'
 
             if (result.success && result.redirectUrl) {
                 // Success! Redirect to WhatsApp
-                window.location.href = result.redirectUrl;
+                window.open(result.redirectUrl, '_blank');
             } else {
                 setError(result.error || 'Algo salió mal. Intenta de nuevo.');
             }
