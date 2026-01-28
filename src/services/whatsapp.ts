@@ -132,11 +132,12 @@ export async function sendWhatsAppMessage(to: string, text: string) {
     }
 
     // Debugging (Remove after verification): Log token info safely
-    console.log(`ℹ️ Using WhatsApp Token: Length=${token.length}, Ends with=${token.slice(-5)}`);
+    console.log(`[${new Date().toISOString()}] ℹ️ Using WhatsApp Token: Length=${token.length}, Ends with=${token.slice(-5)}`);
 
     try {
         const response = await fetch(`https://graph.facebook.com/v22.0/${phoneId}/messages`, {
             method: 'POST',
+            cache: 'no-store', // CRITICAL: Prevent Next.js from caching this request/headers
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
